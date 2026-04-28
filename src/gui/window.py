@@ -1,16 +1,12 @@
-import os
-
-from PySide6.QtCore import QPoint, Qt, QTimer
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QSizeGrip
 
-from core.mpris import MprisManager
-from core.parser import LrcParser
+from core.sync import SyncManager
 from gui.tray import TrayManager
 from gui.widgets.lyrics import LyricsWidget
 from utils.constants import (
     RESIZE_GRIP_SIZE,
     THEME_PRESETS,
-    TIMER_INTERVAL_MS,
 )
 from utils.logger import debug_log
 from utils.themes import get_gtk_colors, get_system_colors
@@ -18,27 +14,35 @@ from utils.themes import get_gtk_colors, get_system_colors
 
 class MainWindow(QMainWindow):
     """
-    Main controller for the lyric display application.
+    View controller for the main lyric display window.
+
+    Handles window life cycle, user input events (dragging, context menu, resizing),
+    and coordinates theme application.
     """
 
     def __init__(self, config):
+        """
+        Initializes the main window and its components.
+
+        Args:
+            config (Config): Application configuration manager.
+        """
         super().__init__()
         self.config = config
-        self.mpris = MprisManager(self.config.get(["mpris", "selected_player"]))
-        self.parser = LrcParser()
-        self.curr_track = ""
-        self.last_idx = -1
         self.drag_pos = QPoint()
 
         self.init_ui()
         self.tray = TrayManager(self, self.style().StandardPixmap.SP_MediaPlay)
         self.apply_theme_style()
 
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.sync_state)
-        self.timer.start(TIMER_INTERVAL_MS)
+        # Initialize and start the synchronization manager
+        self.sync_manager = SyncManager(self.config, self.lyrics_widget)
+        self.sync_manager.start()
 
     def init_ui(self):
+        """
+        Setup basic window properties, flags, and layout.
+        """
         self.setWindowTitle("Simple Lyric Display")
         self.setGeometry(
             self.config.get(["window", "x"], 100),
@@ -58,69 +62,99 @@ class MainWindow(QMainWindow):
         self.sizegrip.setFixedSize(RESIZE_GRIP_SIZE, RESIZE_GRIP_SIZE)
 
     def apply_theme_style(self):
-        """Update the application look and feel based on current settings."""
+        """
+        Update the application look and feel (style and palette) based on current settings.
+        """
         mode = self.config.get("theme_mode", "GTK")
         debug_log(f"UI: Applying theme style. Mode={mode}")
-        if mode == "GTK":
-            QApplication.setStyle("gtk2")
-        else:
-            QApplication.setStyle("Fusion")
-        
-        # Ensure we react to palette changes
+
+        style_name = "gtk2" if mode == "GTK" else "Fusion"
+        QApplication.setStyle(style_name)
+
         self.lyrics_widget.setPalette(QApplication.palette())
         self.lyrics_widget.repaint()
         self.update()
 
     def get_effective_colors(self):
-        """Resolve the current background and foreground colors using theme utilities."""
+        """
+        Resolve the current background, foreground, and highlight colors based on theme settings.
+
+        Returns:
+            tuple: A triplet of hex strings (bg_hex, fg_hex, hl_hex).
+        """
         mode = self.config.get("theme_mode", "GTK")
-        
+
         if mode == "GTK":
             return get_gtk_colors()
-        elif mode == "Qt":
+        if mode == "Qt":
             return get_system_colors()
-            
-        # Custom Mode
-        preset = self.config.get("theme_preset", "Default Dark")
+
+        preset = self.config.get("theme_preset", "Light")
         if preset != "Manual":
-            p = THEME_PRESETS.get(preset, THEME_PRESETS["Default Dark"])
-            return p["bg"], p["fg"]
-        
-        return self.config.get("theme_bg_color", "#1a1a1a"), self.config.get(
-            "theme_fg_color", "#aaaaaa"
+            p = THEME_PRESETS.get(preset, THEME_PRESETS["Light"])
+            return p["bg"], p["fg"], p.get("hl", "#0078d7")
+
+        return (
+            self.config.get("theme_bg_color", "#1a1a1a"),
+            self.config.get("theme_fg_color", "#aaaaaa"),
+            self.config.get("theme_hl_color", "#00ffff"),
         )
 
     def mousePressEvent(self, event):
+        """
+        Handles mouse press for window dragging.
+
+        Args:
+            event (QMouseEvent): The mouse event object.
+        """
         if event.button() == Qt.MouseButton.LeftButton:
             self.drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
             event.accept()
 
     def mouseMoveEvent(self, event):
+        """
+        Handles mouse move for window dragging.
+
+        Args:
+            event (QMouseEvent): The mouse event object.
+        """
         if event.buttons() & Qt.MouseButton.LeftButton:
             self.move(event.globalPosition().toPoint() - self.drag_pos)
             event.accept()
 
     def contextMenuEvent(self, event):
+        """
+        Handles the context menu event (right-click).
+
+        Args:
+            event (QContextMenuEvent): The context menu event object.
+        """
         menu = QMenu(self)
         menu.setStyleSheet("QMenu { background-color: #222; color: #eee; border: 1px solid #444; }")
-        
+
         ontop = menu.addAction("Always on Top")
         ontop.setCheckable(True)
         ontop.setChecked(self.config.get(["window", "always_on_top"], True))
         ontop.triggered.connect(self.toggle_always_on_top)
-        
+
         menu.addSeparator()
         menu.addAction("Settings", self.open_settings)
         menu.addAction("Exit", self.close)
         menu.exec(self.mapToGlobal(event.pos()))
 
     def update_window_flags(self):
+        """
+        Update window flags (Frameless, Always on Top) based on configuration.
+        """
         flags = Qt.WindowType.FramelessWindowHint
         if self.config.get(["window", "always_on_top"], True):
             flags |= Qt.WindowType.WindowStaysOnTopHint
         self.setWindowFlags(flags)
 
     def toggle_always_on_top(self):
+        """
+        Toggle the 'Always on Top' property and refresh window flags.
+        """
         current = self.config.get(["window", "always_on_top"], True)
         self.config.set(["window", "always_on_top"], not current)
         self.update_window_flags()
@@ -128,50 +162,38 @@ class MainWindow(QMainWindow):
         self.show()
 
     def resizeEvent(self, event):
+        """
+        Reposition the resize grip when the window is resized.
+
+        Args:
+            event (QResizeEvent): The resize event object.
+        """
         self.sizegrip.move(
             self.width() - self.sizegrip.width(), self.height() - self.sizegrip.height()
         )
         super().resizeEvent(event)
 
     def open_settings(self):
+        """
+        Open the settings dialog and apply theme updates upon closing.
+        """
         from gui.settings import SettingsDialog
-        debug_log("UI: Opening Settings")
+
         dialog = SettingsDialog(self, self.config)
         dialog.exec()
         self.apply_theme_style()
 
-    def sync_state(self):
-        """Timer callback to synchronize with the MPRIS player."""
-        p = self.mpris.find_active_player()
-        if not p:
-            return
-            
-        meta = self.mpris.get_metadata()
-        if not meta:
-            return
-
-        # Handle track change
-        url = meta.get("url", "")
-        if url != self.curr_track:
-            self.curr_track = url
-            lrc_path = os.path.splitext(url)[0] + ".lrc"
-            self.lyrics_widget.set_lyrics(self.parser.parse(lrc_path), meta)
-            self.last_idx = -2
-
-        # Sync lyric position
-        pos = self.mpris.get_position()
-        idx = self.parser.find_index(pos)
-        if idx != self.last_idx:
-            self.last_idx = idx
-            self.lyrics_widget.set_current_index(idx)
-
     def closeEvent(self, event):
-        """Save window geometry on close."""
+        """
+        Save window geometry and clean up upon closing.
+
+        Args:
+            event (QCloseEvent): The close event object.
+        """
         geo = self.geometry()
         self.config.set(["window", "x"], geo.x())
         self.config.set(["window", "y"], geo.y())
         self.config.set(["window", "width"], geo.width())
         self.config.set(["window", "height"], geo.height())
         self.config.save()
-        debug_log("UI: Closing Application")
         super().closeEvent(event)

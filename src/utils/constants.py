@@ -1,40 +1,27 @@
 """
-Global constants for Simple Lyric Display.
+Application-wide constants and configuration defaults.
 """
 
-# Colors
-COLOR_CYAN = "#00ffff"
-COLOR_ORANGE = "#f0ad4e"
-COLOR_DEFAULT_BG = "#1a1a1a"
-COLOR_DEFAULT_FG = "#f8f8f2"
-COLOR_WHITE = "#ffffff"
-COLOR_BLACK = "#111111"
-COLOR_TRAY_ICON = "SP_MediaPlay"
+# Window Properties
+RESIZE_GRIP_SIZE = 20
+TIMER_INTERVAL_MS = 500
 
-# UI Dimensions & Logic
-DEFAULT_WINDOW_WIDTH = 600
-DEFAULT_WINDOW_HEIGHT = 400
-DEFAULT_WINDOW_OPACITY = 0.9
-RESIZE_GRIP_SIZE = 25
-TIMER_INTERVAL_MS = 50
+# Lyric Rendering Constants
+LINE_HEIGHT_SPACING = 20
 
-# Lyrics Rendering
-LINE_HEIGHT_SPACING = 30
-INTRO_HEIGHT_FACTOR = 2.5
-TRANSITION_SPEED_MS = 50
-SCROLL_ANIMATION_MS = 300
-
-# File Paths
-DEFAULT_CONFIG_DIR = "~/.config/simple-lyric-display"
-CONFIG_FILENAME = "config.json"
+# Rendering Aesthetics
+OUTLINE_WIDTH = 3
+OUTLINE_OPACITY = 230
+ROUNDED_RECT_RADIUS = 15
 
 # Theme Presets
 THEME_PRESETS = {
-    "Default Dark": {"bg": "#1a1a1a", "fg": "#aaaaaa"},
-    "Midnight": {"bg": "#0b0e14", "fg": "#d1d5db"},
-    "Solarized Dark": {"bg": "#002b36", "fg": "#839496"},
-    "Gruvbox": {"bg": "#282828", "fg": "#ebdbb2"},
-    "Nord": {"bg": "#2e3440", "fg": "#d8dee9"},
-    "Matrix": {"bg": "#000000", "fg": "#00ff00"},
-    "Manual": {"bg": None, "fg": None},
+    "Light": {"bg": "#f5f5f5", "fg": "#1a1a1a", "hl": "#0078d7"},
+    "Dark": {"bg": "#1e1f29", "fg": "#f8f8f2", "hl": "#308cc6"},
+    "Nord": {"bg": "#2e3440", "fg": "#eceff4", "hl": "#88c0d0"},
+    "Solarized Dark": {"bg": "#002b36", "fg": "#839496", "hl": "#268bd2"},
+    "Solarized Light": {"bg": "#fdf6e3", "fg": "#657b83", "hl": "#268bd2"},
+    "Nord Light": {"bg": "#eceff4", "fg": "#2e3440", "hl": "#5e81ac"},
+    "GitHub Light": {"bg": "#ffffff", "fg": "#24292e", "hl": "#0366d6"},
+    "Manual": {},
 }

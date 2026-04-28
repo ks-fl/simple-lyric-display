@@ -41,7 +41,8 @@ class SettingsDialog(QDialog):
         player_layout = QHBoxLayout()
         player_layout.addWidget(QLabel("Player:"))
         self.player_combo = QComboBox()
-        available = self.parent_window.mpris.get_available_players()
+        # Player Selection
+        available = self.parent_window.sync_manager.mpris.get_available_players()
         self.player_combo.addItem("Auto")
         for p in available:
             self.player_combo.addItem(p)
@@ -93,7 +94,7 @@ class SettingsDialog(QDialog):
         preset_layout.addWidget(QLabel("Preset:"))
         self.preset_combo = QComboBox()
         self.preset_combo.addItems(list(THEME_PRESETS.keys()))
-        self.preset_combo.setCurrentText(self.config.get("theme_preset", "Default Dark"))
+        self.preset_combo.setCurrentText(self.config.get("theme_preset", "Light"))
         self.preset_combo.currentTextChanged.connect(self.apply_preset)
         preset_layout.addWidget(self.preset_combo)
         custom_layout.addLayout(preset_layout)
@@ -133,8 +134,8 @@ class SettingsDialog(QDialog):
     def update_selected_player(self, player_name):
         val = None if player_name == "Auto" else player_name
         self.config.set(["mpris", "selected_player"], val)
-        self.parent_window.mpris.selected_player = val
-        self.parent_window.mpris.find_active_player()
+        self.parent_window.sync_manager.mpris.selected_player = val
+        self.parent_window.sync_manager.mpris.find_active_player()
 
     def update_ui_visibility(self):
         is_custom = self.mode_combo.currentText() == "Custom"
@@ -173,27 +174,29 @@ class SettingsDialog(QDialog):
             self.config.get(["font", "size"], 18),
         )
         res = QFontDialog.getFont(current_font, self)
-        
+
         font, ok = None, False
         for item in res:
             if isinstance(item, QFont):
                 font = item
             if isinstance(item, bool):
                 ok = item
-            
+
         if ok and font:
             family = font.family()
             size = font.pointSize()
             weight = font.weight()
             italic = font.italic()
-            
-            debug_log(f"UI: Font changed to {family}, Size={size}, Weight={weight}, Italic={italic}")
-            
+
+            debug_log(
+                f"UI: Font changed to {family}, Size={size}, Weight={weight}, Italic={italic}"
+            )
+
             self.config.set(["font", "family"], family)
             self.config.set(["font", "size"], size)
             self.config.set(["font", "weight"], int(weight))
             self.config.set(["font", "italic"], bool(italic))
-            
+
             self.font_btn.setText(f"Font: {family}")
             self.size_spin.setValue(size)
             self.parent_window.lyrics_widget.repaint()
