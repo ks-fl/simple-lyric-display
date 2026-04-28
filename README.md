@@ -16,31 +16,28 @@ A lightweight, modern lyric display for Linux desktops. Syncs local `.lrc` files
 
 - **Precise Sync:** Follows playback position with millisecond precision.
 - **Auto-Scrolling:** Automatically jumps to the current line and keeps it visible.
-- **Visual Highlighting:** Active lines are highlighted with custom colors and subtle font scaling.
+- **Visual Highlighting:** Active lines are highlighted with theme-aware colors.
 - **Customizable Aesthetics:** 
   - Change font family and size.
-  - Adjust background and text colors (with alpha channel support).
+  - Choose from premium presets (Nord, Solarized, GitHub, etc.).
   - Variable window opacity.
 - **Smart Window Management:**
   - Remembers position and size across sessions.
   - "Always on Top" toggle.
   - Drag-and-move from anywhere in the window.
   - System tray integration for quick access.
-- **Metadata Display:** Shows track title, artist, and album information during intros.
 
 ## 🛠 Tech Stack
 
 - **Language:** Python 3.14+
 - **GUI Framework:** PySide6 (Qt for Python)
 - **IPC:** D-Bus (via `gdbus`)
-- **Configuration:** JSON (`~/.config/simple-lyric-display/config.json`)
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
 - **Python 3.14+**
-- **PySide6** library
 - **gdbus** (standard on most Linux distributions)
 - A desktop environment with a **compositor** (Cinnamon, GNOME, KDE, etc.) for transparency.
 - An MPRIS2-compatible music player.
@@ -53,10 +50,11 @@ A lightweight, modern lyric display for Linux desktops. Syncs local `.lrc` files
    cd simple-lyric-display
    ```
 
-2. Install dependencies:
+2. Install everything:
    ```bash
    make install
    ```
+   *Note: This will automatically create a virtual environment (`.venv`) and install all dependencies.*
 
 3. Run the application:
    ```bash
@@ -65,19 +63,14 @@ A lightweight, modern lyric display for Linux desktops. Syncs local `.lrc` files
 
 ### 📦 Building a Standalone Binary
 
-If you prefer a single executable that doesn't require a Python environment:
+To create a single executable that doesn't require a Python environment:
 
-1. Install PyInstaller:
-   ```bash
-   pip install pyinstaller
-   ```
-
-2. Build the binary:
+1. Build the binary:
    ```bash
    make build
    ```
 
-3. Your binary will be ready at `dist/simple-lyric-display`.
+2. Your binary will be ready at `dist/simple-lyric-display`.
 
 ## ⚙️ Configuration
 

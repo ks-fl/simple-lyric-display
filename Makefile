@@ -1,4 +1,4 @@
-.PHONY: install test lint format run clean
+.PHONY: install test lint format run clean build
 
 VENV = .venv
 PYTHON = $(VENV)/bin/python
@@ -6,8 +6,13 @@ PIP = $(VENV)/bin/pip
 SRC_DIR = src
 TEST_DIR = tests
 
-install:
-	$(PIP) install PySide6 pytest ruff
+# Automatic venv creation and installation
+$(VENV):
+	python3 -m venv $(VENV)
+	$(PIP) install --upgrade pip
+
+install: $(VENV)
+	$(PIP) install PySide6 pytest ruff pyinstaller
 
 test:
 	$(PYTHON) -m pytest $(TEST_DIR)
