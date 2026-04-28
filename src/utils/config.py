@@ -1,6 +1,8 @@
 import json
 import os
 
+from utils.logger import debug_log
+
 
 class Config:
     """
@@ -16,12 +18,12 @@ class Config:
             "always_on_top": True,
             "opacity": 0.9,
         },
-        "font": {"family": "Sans Serif", "size": 18},
-        "theme_mode": "System",
+        "font": {"family": "Sans Serif", "size": 18, "weight": 400, "italic": False},
+        "theme_mode": "GTK",
         "theme_bg_color": "#1a1a1a",
         "theme_fg_color": "#aaaaaa",
         "theme_preset": "Default Dark",
-        "mpris": {"priority": ["audacious", "strawberry", "clementine", "amarok", "rhythmbox"]},
+        "mpris": {"selected_player": "strawberry"},
     }
 
     def __init__(self, config_dir="~/.config/simple-lyric-display"):
@@ -30,6 +32,7 @@ class Config:
         """
         self.config_path = os.path.expanduser(os.path.join(config_dir, "config.json"))
         self.data = self.DEFAULT_CONFIG.copy()
+        debug_log(f"CONFIG: Initializing with path {self.config_path}")
         self.load()
 
     def load(self):
@@ -41,8 +44,9 @@ class Config:
                 with open(self.config_path, "r") as f:
                     user_data = json.load(f)
                     self._update_recursive(self.data, user_data)
-            except Exception:
-                pass
+                debug_log(f"CONFIG: Loaded from file: {self.data}")
+            except Exception as e:
+                debug_log(f"CONFIG ERROR: Failed to load: {e}")
 
     def save(self):
         """
@@ -52,8 +56,9 @@ class Config:
             os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
             with open(self.config_path, "w") as f:
                 json.dump(self.data, f, indent=4)
-        except Exception:
-            pass
+            debug_log("CONFIG: Saved to file.")
+        except Exception as e:
+            debug_log(f"CONFIG ERROR: Failed to save: {e}")
 
     def _update_recursive(self, base, update):
         """
@@ -65,10 +70,15 @@ class Config:
             else:
                 base[k] = v
 
-    def get(self, *keys, default=None):
+    def get(self, key, default=None):
         """
         Retrieves a value from the configuration.
         """
+        if isinstance(key, (list, tuple)):
+            keys = key
+        else:
+            keys = [key]
+
         val = self.data
         for k in keys:
             if isinstance(val, dict) and k in val:
@@ -77,17 +87,18 @@ class Config:
                 return default
         return val
 
-    def set(self, *keys_and_val):
+    def set(self, key, value):
         """
         Sets a value in the configuration and saves it.
         """
-        if len(keys_and_val) < 2:
-            return
-        keys = keys_and_val[:-1]
-        val = keys_and_val[-1]
+        debug_log(f"CONFIG SET: {key} -> {value}")
+        if isinstance(key, (list, tuple)):
+            keys = key
+        else:
+            keys = [key]
 
         target = self.data
         for k in keys[:-1]:
             target = target.setdefault(k, {})
-        target[keys[-1]] = val
+        target[keys[-1]] = value
         self.save()

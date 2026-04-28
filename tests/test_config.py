@@ -1,6 +1,5 @@
 import os
 import json
-import pytest
 from utils.config import Config
 
 def test_config_default_values(tmp_path):
@@ -9,7 +8,8 @@ def test_config_default_values(tmp_path):
     config = Config(config_dir=str(config_dir))
     
     assert config.get("theme_mode") == "GTK"
-    assert config.get("window", "width") == 600
+    assert config.get(["window", "width"]) == 600
+    assert config.get(["mpris", "selected_player"]) == "strawberry"
 
 def test_config_set_and_save(tmp_path):
     config_dir = tmp_path / ".config" / "test-app"
@@ -30,5 +30,5 @@ def test_config_nested_get(tmp_path):
     config_dir = tmp_path / ".config" / "test-app"
     config = Config(config_dir=str(config_dir))
     
-    assert config.get("font", "size") == 18
-    assert config.get("nonexistent", "key", default="fallback") == "fallback"
+    assert config.get(["font", "size"]) == 18
+    assert config.get(["nonexistent", "key"], default="fallback") == "fallback"

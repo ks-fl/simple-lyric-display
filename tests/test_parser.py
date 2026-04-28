@@ -22,11 +22,11 @@ def test_get_index_at():
     parser = LrcParser()
     parser.lyrics = [(10.0, "Line 1"), (20.0, "Line 2"), (30.0, "Line 3")]
     
-    assert parser.get_index_at(5.0) == -1
-    assert parser.get_index_at(10.0) == 0
-    assert parser.get_index_at(15.0) == 0
-    assert parser.get_index_at(25.0) == 1
-    assert parser.get_index_at(35.0) == 2
+    assert parser.find_index(5.0) == -1
+    assert parser.find_index(10.0) == 0
+    assert parser.find_index(15.0) == 0
+    assert parser.find_index(25.0) == 1
+    assert parser.find_index(35.0) == 2
 
 def test_parse_empty_file():
     parser = LrcParser()
