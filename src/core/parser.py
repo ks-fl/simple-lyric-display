@@ -1,10 +1,12 @@
-import re
 import os
+import re
+
 
 class LrcParser:
     """
     Simplified LRC parser as it was before the breaking refactor.
     """
+
     def __init__(self):
         self.lyrics = []
 
@@ -12,13 +14,13 @@ class LrcParser:
         self.lyrics = []
         if not lrc_path or not os.path.exists(lrc_path):
             return []
-            
+
         try:
-            with open(lrc_path, 'r', encoding='utf-8', errors='ignore') as f:
+            with open(lrc_path, "r", encoding="utf-8", errors="ignore") as f:
                 for line in f:
                     # Very simple regex for [mm:ss.xx]
-                    matches = re.findall(r'\[(\d+):(\d+\.?\d*)\]', line)
-                    text = re.sub(r'\[.*?\]', '', line).strip()
+                    matches = re.findall(r"\[(\d+):(\d+\.?\d*)\]", line)
+                    text = re.sub(r"\[.*?\]", "", line).strip()
                     for m, s in matches:
                         self.lyrics.append((int(m) * 60 + float(s), text))
             self.lyrics.sort()
@@ -28,7 +30,7 @@ class LrcParser:
 
     def find_index(self, current_seconds):
         index = -1
-        for i, (sec, text) in enumerate(self.lyrics):
+        for i, (sec, _text) in enumerate(self.lyrics):
             if current_seconds >= sec:
                 index = i
             else:

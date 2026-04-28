@@ -1,8 +1,19 @@
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
-                             QSlider, QCheckBox, QPushButton, QFontDialog, QSpinBox, 
-                             QColorDialog, QFrame, QComboBox, QGroupBox, QWidget)
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QFont
+from PySide6.QtWidgets import (
+    QColorDialog,
+    QComboBox,
+    QDialog,
+    QFontDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSlider,
+    QSpinBox,
+    QVBoxLayout,
+    QWidget,
+)
 
 THEME_PRESETS = {
     "Default Dark": {"bg": "#1a1a1a", "fg": "#aaaaaa"},
@@ -11,13 +22,15 @@ THEME_PRESETS = {
     "Gruvbox": {"bg": "#282828", "fg": "#ebdbb2"},
     "Nord": {"bg": "#2e3440", "fg": "#d8dee9"},
     "Matrix": {"bg": "#000000", "fg": "#00ff00"},
-    "Manual": {"bg": None, "fg": None}
+    "Manual": {"bg": None, "fg": None},
 }
+
 
 class SettingsDialog(QDialog):
     """
     Settings dialog for configuring fonts, themes, and window properties.
     """
+
     def __init__(self, parent, config):
         """
         Initializes the settings dialog.
@@ -37,7 +50,7 @@ class SettingsDialog(QDialog):
 
         font_group = QGroupBox("Typography")
         font_layout = QVBoxLayout(font_group)
-        
+
         self.font_btn = QPushButton(f"Font: {self.config.get('font', 'family')}")
         self.font_btn.clicked.connect(self.change_font_family)
         font_layout.addWidget(self.font_btn)
@@ -66,7 +79,7 @@ class SettingsDialog(QDialog):
 
         self.custom_widget = QWidget()
         custom_layout = QVBoxLayout(self.custom_widget)
-        
+
         preset_layout = QHBoxLayout()
         preset_layout.addWidget(QLabel("Preset:"))
         self.preset_combo = QComboBox()
@@ -85,13 +98,13 @@ class SettingsDialog(QDialog):
         colors_layout.addWidget(self.bg_btn)
         colors_layout.addWidget(self.fg_btn)
         custom_layout.addWidget(self.manual_color_widget)
-        
+
         theme_layout.addWidget(self.custom_widget)
         self.layout.addWidget(theme_group)
 
         window_group = QGroupBox("Window")
         win_layout = QVBoxLayout(window_group)
-        
+
         opacity_layout = QHBoxLayout()
         opacity_layout.addWidget(QLabel("Opacity:"))
         self.opacity_slider = QSlider(Qt.Orientation.Horizontal)
@@ -103,7 +116,7 @@ class SettingsDialog(QDialog):
         self.layout.addWidget(window_group)
 
         self.layout.addStretch()
-        
+
         self.close_btn = QPushButton("Close")
         self.close_btn.clicked.connect(self.accept)
         self.layout.addWidget(self.close_btn)
@@ -116,7 +129,7 @@ class SettingsDialog(QDialog):
         """
         is_custom = self.mode_combo.currentText() == "Custom"
         self.custom_widget.setVisible(is_custom)
-        
+
         is_manual = self.preset_combo.currentText() == "Manual"
         self.manual_color_widget.setVisible(is_manual)
 
@@ -145,8 +158,11 @@ class SettingsDialog(QDialog):
         """
         current_color = QColor(self.config.get(config_key, "#ffffff"))
         color = QColorDialog.getColor(
-            current_color, self, "Select Color",
-            QColorDialog.ColorDialogOption.ShowAlphaChannel | QColorDialog.ColorDialogOption.DontUseNativeDialog
+            current_color,
+            self,
+            "Select Color",
+            QColorDialog.ColorDialogOption.ShowAlphaChannel
+            | QColorDialog.ColorDialogOption.DontUseNativeDialog,
         )
         if color.isValid():
             self.config.set(config_key, color.name())

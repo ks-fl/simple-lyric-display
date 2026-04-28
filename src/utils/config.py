@@ -1,10 +1,12 @@
 import json
 import os
 
+
 class Config:
     """
     Handles application configuration, including loading from and saving to a JSON file.
     """
+
     DEFAULT_CONFIG = {
         "window": {
             "width": 600,
@@ -12,19 +14,14 @@ class Config:
             "x": 100,
             "y": 100,
             "always_on_top": True,
-            "opacity": 0.9
+            "opacity": 0.9,
         },
-        "font": {
-            "family": "Sans Serif",
-            "size": 18
-        },
+        "font": {"family": "Sans Serif", "size": 18},
         "theme_mode": "System",
         "theme_bg_color": "#1a1a1a",
         "theme_fg_color": "#aaaaaa",
         "theme_preset": "Default Dark",
-        "mpris": {
-            "priority": ["audacious", "strawberry", "clementine", "amarok", "rhythmbox"]
-        }
+        "mpris": {"priority": ["audacious", "strawberry", "clementine", "amarok", "rhythmbox"]},
     }
 
     def __init__(self, config_dir="~/.config/simple-lyric-display"):
@@ -84,10 +81,11 @@ class Config:
         """
         Sets a value in the configuration and saves it.
         """
-        if len(keys_and_val) < 2: return
+        if len(keys_and_val) < 2:
+            return
         keys = keys_and_val[:-1]
         val = keys_and_val[-1]
-        
+
         target = self.data
         for k in keys[:-1]:
             target = target.setdefault(k, {})
