@@ -103,23 +103,13 @@ class MainWindow(QMainWindow):
     def mousePressEvent(self, event):
         """
         Handles mouse press for window dragging.
+        Uses startSystemMove() for better compatibility with Wayland/GNOME.
 
         Args:
             event (QMouseEvent): The mouse event object.
         """
         if event.button() == Qt.MouseButton.LeftButton:
-            self.drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
-            event.accept()
-
-    def mouseMoveEvent(self, event):
-        """
-        Handles mouse move for window dragging.
-
-        Args:
-            event (QMouseEvent): The mouse event object.
-        """
-        if event.buttons() & Qt.MouseButton.LeftButton:
-            self.move(event.globalPosition().toPoint() - self.drag_pos)
+            self.windowHandle().startSystemMove()
             event.accept()
 
     def contextMenuEvent(self, event):

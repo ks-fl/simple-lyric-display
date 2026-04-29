@@ -68,6 +68,15 @@ class LyricsWidget(QWidget):
             self.current_index = index
             self.update()
 
+    def mousePressEvent(self, event):
+        """
+        Ignores mouse press events to allow them to bubble up to the parent window.
+
+        Args:
+            event (QMouseEvent): The mouse event object.
+        """
+        event.ignore()
+
     def paintEvent(self, event):
         """
         Standard Qt paint event.
@@ -97,7 +106,7 @@ class LyricsWidget(QWidget):
         bg_hex, fg_hex, hl_hex = self.main_window.get_effective_colors()
         font_cfg = self.config.get("font", {})
         f_family = font_cfg.get("family", "Sans Serif")
-        f_size = font_cfg.get("size", 18)
+        f_size = font_cfg.get("size", 12)
 
         # Log changes only
         curr_vals = (bg_hex, fg_hex, hl_hex, f_family, f_size)
@@ -121,22 +130,10 @@ class LyricsWidget(QWidget):
 
         # 4. Layout Calculations
         fm = QFontMetrics(font)
-        line_height = fm.height() + LINE_HEIGHT_SPACING
+        line_spacing = LINE_HEIGHT_SPACING
+        base_line_height = fm.height()
 
-        # Spacing for metadata (Title, Artist)
-        meta_spacing = line_height * 1.2
-        # Start of lyrics should be below metadata
-        intro_height = meta_spacing * 2.5
-
-        center_y = self.height() / 2
-
-        # Scroll calculation: center on current line
-        curr_y = (
-            0 if self.current_index == -1 else intro_height + (self.current_index * line_height)
-        )
-        scroll_offset = center_y - (line_height / 2) - curr_y
-
-        # Determine outline color based on background brightness
+        # Determine outline color
         bg_color = QColor(bg_hex)
         is_light_bg = bg_color.lightness() > 160
         outline_color = (
@@ -145,40 +142,112 @@ class LyricsWidget(QWidget):
             else QColor(0, 0, 0, OUTLINE_OPACITY)
         )
 
+        # Calculate heights for all lines (considering wrapping)
+        max_w = self.width() - 40  # Margin
+        wrapped_lines = []
+        for _, text in self.lyrics:
+            lines = self._get_wrapped_lines(text, font, max_w)
+            wrapped_lines.append(lines)
+
+        meta_title = self._get_wrapped_lines(self.meta.get("title", ""), font, max_w)
+        meta_artist = self._get_wrapped_lines(self.meta.get("artist", ""), font, max_w)
+
+        # Calculate vertical positions
+        meta_spacing = base_line_height * 1.5
+        y_cursor = 0
+
+        # Scroll calculation: center on current line
+        center_y = self.height() / 2
+
+        # Calculate Y for current line
+        curr_y_target = 0
+        current_block_y = 0
+
+        # Accumulate height for meta
+        current_block_y += (len(meta_title) + len(meta_artist)) * (
+            base_line_height + line_spacing
+        ) + meta_spacing
+
+        # Accumulate height up to current index
+        for i in range(len(wrapped_lines)):
+            block_h = len(wrapped_lines[i]) * (base_line_height + line_spacing)
+            if i == self.current_index:
+                curr_y_target = current_block_y + (block_h / 2)
+                break
+            current_block_y += block_h
+
+        scroll_offset = center_y - curr_y_target if self.current_index != -1 else 20
+        y_cursor = scroll_offset
+
         # 5. Draw Track Metadata
-        self._draw_outlined_text(
-            painter, self.meta.get("title", ""), scroll_offset, QColor(hl_hex), True, outline_color
-        )
-        self._draw_outlined_text(
+        y_cursor = self._draw_wrapped_block(
             painter,
-            self.meta.get("artist", ""),
-            scroll_offset + meta_spacing,
+            meta_title,
+            y_cursor,
+            QColor(hl_hex),
+            True,
+            outline_color,
+            base_line_height,
+            line_spacing,
+        )
+        y_cursor = self._draw_wrapped_block(
+            painter,
+            meta_artist,
+            y_cursor,
             QColor(fg_hex),
             False,
             outline_color,
+            base_line_height,
+            line_spacing,
         )
+        y_cursor += meta_spacing
 
         # 6. Draw Lyric Lines
-        for i, (_sec, text) in enumerate(self.lyrics):
-            y = scroll_offset + intro_height + (i * line_height)
-            # Simple frustum culling
-            if -line_height <= y <= self.height() + line_height:
+        for i, lines in enumerate(wrapped_lines):
+            block_h = len(lines) * (base_line_height + line_spacing)
+            if y_cursor + block_h > 0 and y_cursor < self.height():
                 is_curr = i == self.current_index
                 color = QColor(hl_hex) if is_curr else QColor(fg_hex)
-                self._draw_outlined_text(painter, text, y, color, False, outline_color)
+                self._draw_wrapped_block(
+                    painter,
+                    lines,
+                    y_cursor,
+                    color,
+                    False,
+                    outline_color,
+                    base_line_height,
+                    line_spacing,
+                )
+            y_cursor += block_h
 
-    def _draw_outlined_text(self, painter, text, y, color, bold, outline_color):
-        """
-        Helper to draw text with a dynamic outline for maximum visibility.
+    def _get_wrapped_lines(self, text, font, max_width):
+        """Helper to wrap text into multiple lines."""
+        from PySide6.QtGui import QTextLayout
 
-        Args:
-            painter (QPainter): The active painter object.
-            text (str): The text content to draw.
-            y (float): Vertical position.
-            color (QColor): Fill color of the text.
-            bold (bool): Whether to use a bold font.
-            outline_color (QColor): Color of the outline pen.
-        """
+        if not text:
+            return []
+
+        layout = QTextLayout(text, font)
+        layout.beginLayout()
+        lines = []
+        while True:
+            line = layout.createLine()
+            if not line.isValid():
+                break
+            line.setLineWidth(max_width)
+            lines.append(text[line.textStart() : line.textStart() + line.textLength()])
+        layout.endLayout()
+        return lines
+
+    def _draw_wrapped_block(self, painter, lines, y, color, bold, outline_color, line_h, spacing):
+        """Draws a block of wrapped lines."""
+        for line_text in lines:
+            self._draw_single_line(painter, line_text, y, color, bold, outline_color)
+            y += line_h + spacing
+        return y
+
+    def _draw_single_line(self, painter, text, y, color, bold, outline_color):
+        """Draws a single line of outlined text (internal)."""
         if not text:
             return
 
@@ -191,11 +260,9 @@ class LyricsWidget(QWidget):
             f.setBold(True)
             painter.setFont(f)
 
-        # Create text path for outlining
         path = QPainterPath()
         path.addText(x, y + fm.ascent(), painter.font(), text)
 
-        # Draw the outline
         painter.setPen(
             QPen(
                 outline_color,
@@ -206,10 +273,6 @@ class LyricsWidget(QWidget):
             )
         )
         painter.drawPath(path)
-
-        # Fill the text
         painter.setPen(Qt.PenStyle.NoPen)
         painter.fillPath(path, QBrush(color))
-
-        # Restore original font state
         painter.setFont(orig_font)

@@ -33,7 +33,7 @@ def _run(args):
     try:
         res = subprocess.check_output(args, stderr=subprocess.DEVNULL)
         return res.decode().strip().strip("'")
-    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+    except subprocess.CalledProcessError, FileNotFoundError, OSError:
         return ""
 
 

@@ -21,7 +21,7 @@ class Config:
             "always_on_top": True,
             "opacity": 0.9,
         },
-        "font": {"family": "Sans Serif", "size": 18, "weight": 400, "italic": False},
+        "font": {"family": "Sans Serif", "size": 12, "weight": 400, "italic": False},
         "theme_mode": "GTK",
         "theme_bg_color": "#f5f5f5",
         "theme_fg_color": "#1a1a1a",
@@ -99,7 +99,7 @@ class Config:
             for k in keys:
                 val = val[k]
             return val
-        except (KeyError, TypeError):
+        except KeyError, TypeError:
             return default
 
     def set(self, key, value):

@@ -30,5 +30,5 @@ def test_config_nested_get(tmp_path):
     config_dir = tmp_path / ".config" / "test-app"
     config = Config(config_dir=str(config_dir))
     
-    assert config.get(["font", "size"]) == 18
+    assert config.get(["font", "size"]) == 12
     assert config.get(["nonexistent", "key"], default="fallback") == "fallback"
