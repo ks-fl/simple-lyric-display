@@ -1,4 +1,5 @@
 import sys
+
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QSizeGrip
 

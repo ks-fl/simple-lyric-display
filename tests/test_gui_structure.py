@@ -1,37 +1,48 @@
 import sys
-from unittest.mock import MagicMock, patch
 import pytest
+from unittest.mock import MagicMock, patch
 
-# Create distinct mocks for each PySide6 module
-mock_widgets = MagicMock()
-class MockBase:
-    def __init__(self, *args, **kwargs): pass
-    def __getattr__(self, name): return MagicMock()
-    def style(self): return MagicMock()
-    def frameGeometry(self): return MagicMock()
-    def geometry(self): return MagicMock()
-    def hide(self): pass
-    def show(self): pass
-    def setWindowFlags(self, flags): pass
-    def setAttribute(self, attr, on): pass
-    def windowHandle(self): return MagicMock()
+# Define the mocking logic in a controlled way
+def get_pyside_mocks():
+    mock_widgets = MagicMock()
+    class MockBase:
+        def __init__(self, *args, **kwargs): pass
+        def __getattr__(self, name): return MagicMock()
+        def style(self): return MagicMock()
+        def frameGeometry(self): return MagicMock()
+        def geometry(self): return MagicMock()
+        def hide(self): pass
+        def show(self): pass
+        def setWindowFlags(self, flags): pass
+        def setAttribute(self, attr, on): pass
+        def windowHandle(self): return MagicMock()
 
-mock_widgets.QMainWindow = MockBase
-mock_widgets.QDialog = MockBase
-mock_widgets.QWidget = MockBase
+    mock_widgets.QMainWindow = MockBase
+    mock_widgets.QDialog = MockBase
+    mock_widgets.QWidget = MockBase
+    
+    return {
+        "PySide6": MagicMock(),
+        "PySide6.QtCore": MagicMock(),
+        "PySide6.QtGui": MagicMock(),
+        "PySide6.QtWidgets": mock_widgets
+    }
 
-sys.modules["PySide6"] = MagicMock()
-sys.modules["PySide6.QtCore"] = MagicMock()
-sys.modules["PySide6.QtGui"] = MagicMock()
-sys.modules["PySide6.QtWidgets"] = mock_widgets
-
-from gui.window import MainWindow
-from gui.settings import SettingsDialog
+@pytest.fixture
+def mock_pyside():
+    """Locally patch sys.modules to avoid interference with other tests."""
+    with patch.dict(sys.modules, get_pyside_mocks()):
+        # We must re-import the modules under test inside the patch
+        # or use a fresh import if possible.
+        if "gui.window" in sys.modules: del sys.modules["gui.window"]
+        if "gui.settings" in sys.modules: del sys.modules["gui.settings"]
+        from gui.window import MainWindow
+        from gui.settings import SettingsDialog
+        yield MainWindow, SettingsDialog
 
 @pytest.fixture
 def mock_config():
     config = MagicMock()
-    # Provide sensible defaults for various config.get calls in SettingsDialog
     def side_effect(key, default=None):
         if "opacity" in str(key): return 0.9
         if "size" in str(key): return 18
@@ -42,18 +53,19 @@ def mock_config():
     config.get.side_effect = side_effect
     return config
 
-def test_mainwindow_initialization(mock_config):
-    """Ensure MainWindow initializes with correct components after refactoring."""
-    with patch("gui.window.LyricsWidget"), \
-         patch("gui.window.TrayManager"), \
-         patch("gui.window.SyncManager") as MockSync:
+def test_mainwindow_initialization(mock_pyside, mock_config):
+    MainWindow, _ = mock_pyside
+    with patch("gui.window.TrayManager"), \
+         patch("gui.window.SyncManager") as MockSync, \
+         patch("gui.window.LyricsWidget"), \
+         patch("gui.window.QSizeGrip"):
         
         window = MainWindow(mock_config)
         assert hasattr(window, "sync_manager")
         MockSync.return_value.start.assert_called_once()
 
-def test_settings_dialog_mpris_access(mock_config):
-    """Ensure SettingsDialog accesses mpris via sync_manager correctly."""
+def test_settings_dialog_mpris_access(mock_pyside, mock_config):
+    _, SettingsDialog = mock_pyside
     mock_window = MagicMock()
     mock_sync = MagicMock()
     mock_window.sync_manager = mock_sync
@@ -69,40 +81,31 @@ def test_settings_dialog_mpris_access(mock_config):
          patch("gui.settings.QSpinBox"):
         
         dialog = SettingsDialog(mock_window, mock_config)
-        
-        # Verify the access path fixed in settings.py
         mock_sync.mpris.get_available_players.assert_called()
         
-def test_mainwindow_toggle_always_on_top(mock_config):
-    """Verify that toggle_always_on_top follows the hide/show cycle and sets correct flags."""
-    with patch("gui.window.LyricsWidget"), \
-         patch("gui.window.TrayManager"), \
-         patch("gui.window.SyncManager"):
+        dialog.update_selected_player("Player1")
+        assert mock_window.sync_manager.mpris.selected_player == "Player1"
+
+def test_mainwindow_toggle_always_on_top(mock_pyside, mock_config):
+    MainWindow, _ = mock_pyside
+    with patch("gui.window.TrayManager"), \
+         patch("gui.window.SyncManager"), \
+         patch("gui.window.LyricsWidget"), \
+         patch("gui.window.QSizeGrip"):
         
-        # We need to mock methods on the instance
-        with patch.object(MainWindow, "hide") as mock_hide, \
-             patch.object(MainWindow, "show") as mock_show, \
-             patch.object(MainWindow, "setWindowFlags") as mock_set_flags, \
-             patch.object(MainWindow, "setAttribute") as mock_set_attr:
+        # In this mock environment, MainWindow inherits from our MockBase
+        window = MainWindow(mock_config)
+        
+        # We need to mock methods on the instance which is already a MockBase
+        with patch.object(window, "hide") as mock_hide, \
+             patch.object(window, "show") as mock_show, \
+             patch.object(window, "setWindowFlags") as mock_set_flags, \
+             patch.object(window, "setAttribute") as mock_set_attr:
             
-            window = MainWindow(mock_config)
-            
-            # Reset mocks because initialization calls some of these
-            mock_hide.reset_mock()
-            mock_show.reset_mock()
-            mock_set_flags.reset_mock()
-            mock_set_attr.reset_mock()
-            
-            # Toggle Always on Top
             window.toggle_always_on_top()
             
-            # Verify sequence: hide -> setFlags -> setAttr -> show
             mock_hide.assert_called_once()
             mock_set_flags.assert_called_once()
             from unittest.mock import ANY
-            mock_set_attr.assert_called_with(ANY, True) # Qt.WidgetAttribute.WA_TranslucentBackground
+            mock_set_attr.assert_called_with(ANY, True)
             mock_show.assert_called_once()
-            
-            # Verify that flags include WindowStaysOnTopHint if enabled
-            # Note: In our mock setup, the actual bitwise logic is hard to check perfectly 
-            # but we can verify the call happened.
