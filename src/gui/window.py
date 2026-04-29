@@ -136,7 +136,8 @@ class MainWindow(QMainWindow):
         """
         Update window flags (Frameless, Always on Top) based on configuration.
         """
-        flags = Qt.WindowType.FramelessWindowHint
+        # Adding Qt.Window ensures it's treated as a top-level window
+        flags = Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint
         if self.config.get(["window", "always_on_top"], True):
             flags |= Qt.WindowType.WindowStaysOnTopHint
         self.setWindowFlags(flags)
@@ -147,7 +148,11 @@ class MainWindow(QMainWindow):
         """
         current = self.config.get(["window", "always_on_top"], True)
         self.config.set(["window", "always_on_top"], not current)
+        
+        # On Linux/Gnome, re-applying flags often requires hiding the window first
+        self.hide()
         self.update_window_flags()
+        # Translucent background attribute must be re-set after setWindowFlags
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.show()
 
