@@ -1,3 +1,4 @@
+import sys
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QSizeGrip
 
@@ -137,9 +138,14 @@ class MainWindow(QMainWindow):
         Update window flags (Frameless, Always on Top) based on configuration.
         """
         # Adding Qt.Window ensures it's treated as a top-level window
-        flags = Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint
+        flags = Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint | Qt.WindowType.CustomizeWindowHint
+        
         if self.config.get(["window", "always_on_top"], True):
             flags |= Qt.WindowType.WindowStaysOnTopHint
+            if sys.platform == "linux":
+                # Qt.Tool often works better across various Linux WMs (KDE, XFCE, Gnome)
+                # for keeping frameless windows on top without losing integration.
+                flags |= Qt.WindowType.Tool
         self.setWindowFlags(flags)
 
     def toggle_always_on_top(self):

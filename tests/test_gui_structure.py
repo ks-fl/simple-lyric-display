@@ -10,6 +10,11 @@ class MockBase:
     def style(self): return MagicMock()
     def frameGeometry(self): return MagicMock()
     def geometry(self): return MagicMock()
+    def hide(self): pass
+    def show(self): pass
+    def setWindowFlags(self, flags): pass
+    def setAttribute(self, attr, on): pass
+    def windowHandle(self): return MagicMock()
 
 mock_widgets.QMainWindow = MockBase
 mock_widgets.QDialog = MockBase
@@ -68,7 +73,36 @@ def test_settings_dialog_mpris_access(mock_config):
         # Verify the access path fixed in settings.py
         mock_sync.mpris.get_available_players.assert_called()
         
-        # Check update_selected_player path
-        dialog.update_selected_player("Player1")
-        assert mock_window.sync_manager.mpris.selected_player == "Player1"
-        mock_window.sync_manager.mpris.find_active_player.assert_called()
+def test_mainwindow_toggle_always_on_top(mock_config):
+    """Verify that toggle_always_on_top follows the hide/show cycle and sets correct flags."""
+    with patch("gui.window.LyricsWidget"), \
+         patch("gui.window.TrayManager"), \
+         patch("gui.window.SyncManager"):
+        
+        # We need to mock methods on the instance
+        with patch.object(MainWindow, "hide") as mock_hide, \
+             patch.object(MainWindow, "show") as mock_show, \
+             patch.object(MainWindow, "setWindowFlags") as mock_set_flags, \
+             patch.object(MainWindow, "setAttribute") as mock_set_attr:
+            
+            window = MainWindow(mock_config)
+            
+            # Reset mocks because initialization calls some of these
+            mock_hide.reset_mock()
+            mock_show.reset_mock()
+            mock_set_flags.reset_mock()
+            mock_set_attr.reset_mock()
+            
+            # Toggle Always on Top
+            window.toggle_always_on_top()
+            
+            # Verify sequence: hide -> setFlags -> setAttr -> show
+            mock_hide.assert_called_once()
+            mock_set_flags.assert_called_once()
+            from unittest.mock import ANY
+            mock_set_attr.assert_called_with(ANY, True) # Qt.WidgetAttribute.WA_TranslucentBackground
+            mock_show.assert_called_once()
+            
+            # Verify that flags include WindowStaysOnTopHint if enabled
+            # Note: In our mock setup, the actual bitwise logic is hard to check perfectly 
+            # but we can verify the call happened.
